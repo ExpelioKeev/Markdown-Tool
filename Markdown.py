@@ -45,7 +45,7 @@ class TextFormattingTool(QMainWindow):
         italics_button.clicked.connect(self.make_italics)
         button_layout.addWidget(italics_button)
 
-        domain_ip_button = QPushButton('Add Highlights to Domains and IPs', self)
+        domain_ip_button = QPushButton('Add Highlights to Domains, IPs & Emails', self)
         domain_ip_button.clicked.connect(self.add_grave_to_domains_and_ips)
         button_layout.addWidget(domain_ip_button)
 
@@ -57,7 +57,7 @@ class TextFormattingTool(QMainWindow):
         link_button.clicked.connect(self.add_link)
         button_layout.addWidget(link_button)
         
-        self.clear_button = QPushButton('Clear', self)
+        self.clear_button = QPushButton('Clear Formatting', self)
         self.clear_button.clicked.connect(self.clear_formatting)
         button_layout.addWidget(self.clear_button)
 
@@ -100,9 +100,12 @@ class TextFormattingTool(QMainWindow):
         # Regular expression to find domains and IPs that are not already enclosed in grave accents
         domains_and_ips = re.findall(
             r'(?<!`)\b(?:'
-            r'((?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+(?:[a-z]{2,6}|[a-z]{2}\.[a-z]{2}))'
+            r'((?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+(?:[a-z]{2,6}|[a-z]{2}\.[a-z]{2}))'  # Domain
             r'|'
-            r'((?:\d{1,3}\.){3}\d{1,3}))\b(?!`)', 
+            r'((?:\d{1,3}\.){3}\d{1,3})'  # IP address
+            r'|'
+            r'([a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+)'  # Email address
+            r')\b(?!`)', 
             text, 
             re.IGNORECASE
         )
@@ -113,11 +116,12 @@ class TextFormattingTool(QMainWindow):
                 text = text.replace(match[0], f'`{match[0]}`')
             elif match[1]:  # This is an IP address
                 text = text.replace(match[1], f'`{match[1]}`')
+            elif match[2]:  # This is an email address
+                text = text.replace(match[2], f'`{match[2]}`')
         
         # Update the text in the text edit field
         self.text_edit.setPlainText(text)
 
-        
     def add_grave_accents_to_block(self):
         selected_text = self.text_edit.textCursor().selectedText()
         if selected_text:
@@ -143,10 +147,10 @@ class TextFormattingTool(QMainWindow):
         cursor.removeSelectedText()  # Remove selected text
         text = self.text_edit.toPlainText()
         
-        # Remove grave accents
-        text = re.sub(r'```(.*?)```', r'\1', text, flags=re.DOTALL)
+        # Remove grave accents (inline code)
+        text = re.sub(r'`([^`]*)`', r'\1', text)
         # Remove grave accents (triple backticks) for code blocks
-        text = re.sub(r'```.*?```', '', text, flags=re.DOTALL)
+        text = re.sub(r'```([^`]*)```', r'\1', text, flags=re.DOTALL)
         # Remove asterisks (Bold)
         text = re.sub(r'\*\*(.+?)\*\*', r'\1', text)
         # Remove askterisks (italics)
