@@ -47,7 +47,6 @@ class TextFormattingTool(QMainWindow):
         self.clear_button.clicked.connect(self.clear_formatting)
         button_layout.addWidget(self.clear_button)
 
-
         main_layout.addLayout(button_layout)
 
         # Text Input
@@ -142,8 +141,7 @@ class TextFormattingTool(QMainWindow):
         # Remove askterisks (italics)
         text = re.sub(r'\*(.*?)\*', r'\1', text)
         # Remove hyperlinks [text](url)
-        text = re.sub(r'\[([^\]]+)\]\([^\)]+\)', r'\1', text)
-        
+        text = re.sub(r'\[([^\]]+)\]\([^\)]+\)', r'\1', text)       
         
         # Set the updated text back to the text edit
         self.text_edit.setPlainText(text) 
