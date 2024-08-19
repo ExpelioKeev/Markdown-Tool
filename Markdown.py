@@ -131,7 +131,6 @@ class TextFormattingTool(QMainWindow):
         cursor = self.text_edit.textCursor()
         cursor.removeSelectedText()  # Remove selected text
         text = self.text_edit.toPlainText()
-        
         # Remove grave accents (inline code)
         text = re.sub(r'`([^`]*)`', r'\1', text)
         # Remove grave accents (triple backticks) for code blocks
