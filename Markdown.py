@@ -1,20 +1,6 @@
 import sys
 import re
-import subprocess
 from PyQt5.QtWidgets import QApplication, QMainWindow, QTextEdit, QPushButton, QVBoxLayout, QHBoxLayout, QWidget, QInputDialog
-
-chrome_script = 'tell application "Google Chrome" to set gmyText to execute front window\'s active tab javascript "window.getSelection().toString()"'
-
-result = subprocess.run(['osascript', '-e', chrome_script], capture_output=True, text=True)
-
-output = ''
-
-if result.returncode == 0:
-    output = result.stdout.strip()
-    print(output)
-else:
-    error = result.stderr.strip()
-    print(f"An error occurred: {error}")
 
 class TextFormattingTool(QMainWindow):
     def __init__(self):
