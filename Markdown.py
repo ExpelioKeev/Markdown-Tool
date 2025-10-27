@@ -1,8 +1,11 @@
 import sys
 import re
-from PyQt5.QtWidgets import QApplication, QMainWindow, QTextEdit, QPushButton, QVBoxLayout, QHBoxLayout, QWidget, QInputDialog
+import requests
+import json
+from PyQt5.QtWidgets import QApplication, QMainWindow, QTextEdit, QPushButton, QVBoxLayout, QHBoxLayout, QWidget, QInputDialog, QMessageBox
 
 class TextFormattingTool(QMainWindow):
+    
     def __init__(self):
         super().__init__()
 
@@ -43,6 +46,11 @@ class TextFormattingTool(QMainWindow):
         link_button.clicked.connect(self.add_link)
         button_layout.addWidget(link_button)
         
+        # NEW: Ollama formatting button
+        ollama_button = QPushButton('Auto-Format with Ollama', self)
+        ollama_button.clicked.connect(self.format_with_ollama)
+        button_layout.addWidget(ollama_button)
+        
         self.clear_button = QPushButton('Clear Formatting', self)
         self.clear_button.clicked.connect(self.clear_formatting)
         button_layout.addWidget(self.clear_button)
@@ -74,11 +82,6 @@ class TextFormattingTool(QMainWindow):
             replacement_text = f'*{selected_text}*'
             self.text_edit.insertPlainText(replacement_text)
 
-    def add_grave_to_domains_and_ips(self):
-    # Obtain the text from the text_edit widget
-        text = self.text_edit.toPlainText()
-    
-    # Regular expression to find domains and IPs that are not already enclosed in grave accents
     def add_grave_to_domains_and_ips(self):
         text = self.text_edit.toPlainText()
         
@@ -143,7 +146,103 @@ class TextFormattingTool(QMainWindow):
         text = re.sub(r'\[([^\]]+)\]\([^\)]+\)', r'\1', text)       
         
         # Set the updated text back to the text edit
-        self.text_edit.setPlainText(text) 
+        self.text_edit.setPlainText(text)
+
+    # NEW: Ollama formatting method
+    def format_with_ollama(self):
+        """Format text using Ollama with preconfigured prompt"""
+        cursor = self.text_edit.textCursor()
+        
+        # Get text to format (selected or all)
+        if cursor.hasSelection():
+            text_to_format = cursor.selectedText()
+            had_selection = True
+        else:
+            text_to_format = self.text_edit.toPlainText()
+            had_selection = False
+        
+        # Check if there's text to format
+        if not text_to_format.strip():
+            QMessageBox.warning(self, "No Text", "There is no text to format.")
+            return
+        
+        # Send to Ollama
+        formatted_text = self.send_to_ollama(text_to_format)
+        
+        # Replace text with formatted result
+        if formatted_text and formatted_text != text_to_format:
+            if had_selection:
+                cursor.insertText(formatted_text)
+            else:
+                self.text_edit.setPlainText(formatted_text)
+    
+    # NEW: Helper method to communicate with Ollama
+    def send_to_ollama(self, text):
+        """Send text to Ollama API and return formatted result"""
+        try:
+            # Prepare API request - model handles formatting based on its Modelfile
+            request_data = {
+                "model": "phi4",  # Change to your custom model name
+                "prompt": text,
+                "stream": False,
+                "temperature": 0.1  # Low temperature for consistent formatting
+            }
+            
+            # Send request to Ollama
+            # Try localhost first, fallback to 127.0.0.1 if needed
+            ollama_url = "http://127.0.0.1:11434/api/generate"
+            
+            response = requests.post(
+                ollama_url,
+                headers={"Content-Type": "application/json"},
+                json=request_data,
+                timeout=60  # 60 second timeout
+            )
+            
+            # Check if request was successful
+            if response.status_code == 200:
+                response_json = response.json()
+                formatted_text = response_json.get("response", "").strip()
+                return formatted_text
+            else:
+                QMessageBox.critical(
+                    self, 
+                    "Ollama Error", 
+                    f"Ollama returned error code {response.status_code}.\n\nMake sure Ollama is running and the model exists."
+                )
+                return text
+                
+        except requests.exceptions.ConnectionError:
+            QMessageBox.critical(
+                self, 
+                "Connection Error", 
+                "Cannot connect to Ollama.\n\nMake sure Ollama is running:\n  ollama serve"
+            )
+            return text
+            
+        except requests.exceptions.Timeout:
+            QMessageBox.critical(
+                self, 
+                "Timeout Error", 
+                "Ollama took too long to respond.\n\nTry with shorter text or increase timeout."
+            )
+            return text
+            
+        except json.JSONDecodeError:
+            QMessageBox.critical(
+                self, 
+                "Parse Error", 
+                "Could not parse Ollama response.\n\nCheck Ollama logs for errors."
+            )
+            return text
+            
+        except Exception as e:
+            QMessageBox.critical(
+                self, 
+                "Unexpected Error", 
+                f"An error occurred:\n\n{str(e)}"
+            )
+            return text
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
